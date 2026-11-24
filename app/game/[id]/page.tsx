@@ -187,7 +187,10 @@ export default function GamePage() {
           </button>
         </div>
         {round !== null && (
-          <div className="teams" style={{ gridTemplateColumns: `repeat(${game.teams.length}, minmax(0, 1fr))` }}>
+          <div
+            className={`teams entry-head${game.teams.length > 2 ? " many" : ""}`}
+            style={{ gridTemplateColumns: `repeat(${game.teams.length}, minmax(0, 1fr))` }}
+          >
             {game.teams.map((t, i) => {
               const rt = roundTotal(game.rounds[round][i], rules);
               return (
@@ -283,6 +286,7 @@ function RoundEntry({
   const cols = { gridTemplateColumns: `repeat(${game.teams.length}, minmax(0, 1fr))` };
   const start = rules.lines.filter((l) => l.phase === "start");
   const end = rules.lines.filter((l) => l.phase === "end");
+  const lc = `lines entry${game.teams.length > 2 ? " many" : ""}`;
 
   const setCount = (team: number, key: string, n: number) =>
     onChange(team, (t, g) => {
@@ -365,7 +369,7 @@ function RoundEntry({
           <span className="l">{def.label}</span>
           <span className="v">
             {auto
-              ? `automatic at ${auto.atLeast}+ books`
+              ? `auto at ${auto.atLeast}+`
               : def.kind === "toggle"
                 ? fmt(def.value)
                 : `${fmt(def.value)} each`}
@@ -388,12 +392,12 @@ function RoundEntry({
       {start.length > 0 && (
         <>
           <div className="section-title">Start of hand</div>
-          <div className="lines">{start.map(line)}</div>
+          <div className={lc}>{start.map(line)}</div>
         </>
       )}
 
       <div className="section-title">End of hand</div>
-      <div className="lines">
+      <div className={lc}>
         {end.map(line)}
         <div className="mline">
           <div className="mline-label">
@@ -434,7 +438,7 @@ function RoundEntry({
         <p className="small muted" style={{ margin: "0 4px 8px" }}>
           Enter how many of each card the team has. The total fills in the card count above.
         </p>
-        <div className="lines">
+        <div className={lc}>
           {cards.map((c) => (
             <div className="mline" key={c.key}>
               <div className="mline-label">

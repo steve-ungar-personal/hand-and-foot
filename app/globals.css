@@ -233,3 +233,32 @@ input[type="date"] {
   display: block; min-width: 0; max-width: 100%;
 }
 input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+
+/* ---- Line name to the left of the team columns ---- */
+.entry .mline {
+  display: grid; grid-template-columns: 92px minmax(0, 1fr);
+  column-gap: 8px; align-items: center; padding: 6px 10px;
+}
+.entry .mline-label { flex-direction: column; align-items: flex-start; gap: 1px; margin: 0; }
+.entry .mline-label .l { font-size: 0.88rem; line-height: 1.15; }
+.entry .mline-label .v { font-size: 0.7rem; text-align: left; line-height: 1.15; }
+/* 1px border + 10px padding + 92px label + 8px gap */
+.teams.entry-head { margin-left: 111px; }
+
+/* Smaller controls */
+.mcell .stepper { border-radius: 9px; }
+.mcell .stepper button { min-width: 26px; height: 34px; font-size: 1.1rem; }
+.mcell .stepper .n { min-width: 22px; font-size: 1rem; }
+.mcell .toggle, .mcell .auto-badge { height: 34px; border-radius: 9px; font-size: 0.85rem; }
+.mcell .cc { grid-template-columns: 28px 1fr; }
+.mcell .cc .sign { height: 34px; border-radius: 9px; font-size: 1rem; }
+.mcell .cc input, .mcell input.tally { min-height: 34px; padding: 4px 6px; font-size: 0.95rem; border-radius: 9px; }
+.mpts { font-size: 0.72rem; margin-top: 2px; }
+.entry .mcell.big { font-size: 1.1rem; }
+
+/* 3–4 teams on a phone: not enough width beside the label, so keep it on top. */
+@media (max-width: 560px) {
+  .entry.many .mline { display: block; padding: 8px 10px; }
+  .entry.many .mline-label { flex-direction: row; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+  .teams.entry-head.many { margin-left: 0; }
+}
