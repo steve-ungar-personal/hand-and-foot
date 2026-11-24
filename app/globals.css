@@ -234,46 +234,33 @@ input[type="date"] {
 }
 input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 
-/* ---- Line name to the left of the team columns ---- */
-.entry .mline {
-  display: grid; grid-template-columns: 92px minmax(0, 1fr);
-  column-gap: 8px; align-items: center; padding: 6px 10px;
-}
-.entry .mline-label { flex-direction: column; align-items: flex-start; gap: 1px; margin: 0; }
-.entry .mline-label .l { font-size: 0.88rem; line-height: 1.15; }
-.entry .mline-label .v { font-size: 0.7rem; text-align: left; line-height: 1.15; }
-/* 1px border + 10px padding + 92px label + 8px gap */
-.teams.entry-head { margin-left: 111px; }
+/* ---- Line name above the team columns ---- */
+.entry .mline { padding: 10px 12px 12px; }
+.entry .mline-label { margin-bottom: 8px; }
+.entry .mline-label .l { font-size: 0.98rem; }
+.entry .mline-label .v { font-size: 0.82rem; font-weight: 600; color: var(--accent); }
+.entry .mline.total .mline-label { margin-bottom: 4px; }
+.mcells { column-gap: 18px; row-gap: 6px; }
 
-/* Smaller controls */
-.mcell .stepper { border-radius: 9px; }
-.mcell .stepper button { min-width: 26px; height: 34px; font-size: 1.1rem; }
-.mcell .stepper .n { min-width: 22px; font-size: 1rem; }
-.mcell .toggle, .mcell .auto-badge { height: 34px; border-radius: 9px; font-size: 0.85rem; }
-.mcell .cc { grid-template-columns: 28px 1fr; }
-.mcell .cc .sign { height: 34px; border-radius: 9px; font-size: 1rem; }
-.mcell .cc input, .mcell input.tally { min-height: 34px; padding: 4px 6px; font-size: 0.95rem; border-radius: 9px; }
-.mpts { font-size: 0.72rem; margin-top: 2px; }
-.entry .mcell.big { font-size: 1.1rem; }
+/* Controls */
+.mcell .stepper { width: auto; display: inline-flex; align-self: center; border-radius: 10px; }
+.mcell .stepper button { width: 44px; min-width: 44px; height: 40px; font-size: 1.25rem; }
+.mcell .stepper .n { width: 34px; min-width: 34px; font-size: 1.05rem; }
+.mcell .toggle, .mcell .auto-badge { height: 40px; border-radius: 10px; font-size: 0.9rem; }
+.mcell .cc { grid-template-columns: 34px 1fr; }
+.mcell .cc .sign { height: 40px; border-radius: 10px; }
+.mcell .cc input, .mcell input.tally { min-height: 40px; padding: 4px 6px; font-size: 1rem; border-radius: 10px; }
+.mpts { font-size: 0.78rem; margin-top: 4px; }
+.entry .mcell.big { font-size: 1.2rem; }
 
-/* 3–4 teams on a phone: not enough width beside the label, so keep it on top. */
+/* 3-4 teams on a phone: narrower steppers so every column fits */
 @media (max-width: 560px) {
-  .entry.many .mline { display: block; padding: 8px 10px; }
-  .entry.many .mline-label { flex-direction: row; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
-  .teams.entry-head.many { margin-left: 0; }
+  .entry.many .mcells { column-gap: 8px; }
+  .entry.many .mcell .stepper button { width: 28px; min-width: 28px; }
+  .entry.many .mcell .stepper .n { width: 24px; min-width: 24px; }
 }
-
-/* Compact steppers that don't stretch, so neighbouring team columns have space between them */
-.mcells { column-gap: 12px; }
-.mcell .stepper { width: auto; display: inline-flex; align-self: center; }
-.mcell .stepper button { width: 30px; min-width: 30px; }
-.mcell .stepper .n { width: 26px; min-width: 26px; }
-
-/* Slightly wider +/- buttons */
-.mcell .stepper button { width: 38px; min-width: 38px; }
-.mcell .stepper .n { width: 30px; min-width: 30px; }
-@media (max-width: 560px) {
-  /* 3-4 teams on a phone: keep them narrow enough to fit */
-  .entry.many .mcell .stepper button { width: 24px; min-width: 24px; }
-  .entry.many .mcell .stepper .n { width: 22px; min-width: 22px; }
+@media (max-width: 400px) {
+  .topbar nav a { padding: 6px 7px; font-size: 0.9rem; }
+  .brand { font-size: 1rem; white-space: nowrap; }
+  .topbar nav { gap: 0; }
 }

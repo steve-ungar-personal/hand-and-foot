@@ -96,7 +96,10 @@ export default function NewGame() {
 
       <div className="card stack">
         <div>
-          <label className="field" htmlFor="league">League</label>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+            <label className="field" htmlFor="league">League</label>
+            <Link href="/leagues" className="small">Manage leagues</Link>
+          </div>
           <select id="league" value={league} onChange={(e) => setLeague(e.target.value)} disabled={!leagues}>
             {leagues?.map((l) => (
               <option key={l.name} value={l.name}>{l.name}</option>

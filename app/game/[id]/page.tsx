@@ -188,7 +188,7 @@ export default function GamePage() {
         </div>
         {round !== null && (
           <div
-            className={`teams entry-head${game.teams.length > 2 ? " many" : ""}`}
+            className="teams"
             style={{ gridTemplateColumns: `repeat(${game.teams.length}, minmax(0, 1fr))` }}
           >
             {game.teams.map((t, i) => {
@@ -369,10 +369,10 @@ function RoundEntry({
           <span className="l">{def.label}</span>
           <span className="v">
             {auto
-              ? `auto at ${auto.atLeast}+`
+              ? `${fmt(def.value)} pts at ${auto.atLeast}+ books`
               : def.kind === "toggle"
-                ? fmt(def.value)
-                : `${fmt(def.value)} each`}
+                ? `${fmt(def.value)} pts`
+                : `${fmt(def.value)} pts each`}
           </span>
         </div>
         <div className="mcells" style={cols}>
@@ -443,7 +443,7 @@ function RoundEntry({
             <div className="mline" key={c.key}>
               <div className="mline-label">
                 <span className="l">{c.label}</span>
-                <span className="v">{c.value > 0 ? `+${c.value}` : fmt(c.value)} each</span>
+                <span className="v">{c.value > 0 ? `+${c.value}` : fmt(c.value)} pts each</span>
               </div>
               <div className="mcells" style={cols}>
                 {trs.map((tr, ti) => (
