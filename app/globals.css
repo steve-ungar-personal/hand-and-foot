@@ -262,3 +262,9 @@ input[type="date"]::-webkit-date-and-time-value { text-align: left; }
   .entry.many .mline-label { flex-direction: row; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
   .teams.entry-head.many { margin-left: 0; }
 }
+
+/* Compact steppers that don't stretch, so neighbouring team columns have space between them */
+.mcells { column-gap: 12px; }
+.mcell .stepper { width: auto; display: inline-flex; align-self: center; }
+.mcell .stepper button { width: 30px; min-width: 30px; }
+.mcell .stepper .n { width: 26px; min-width: 26px; }
