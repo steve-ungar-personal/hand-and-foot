@@ -268,3 +268,12 @@ input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 .mcell .stepper { width: auto; display: inline-flex; align-self: center; }
 .mcell .stepper button { width: 30px; min-width: 30px; }
 .mcell .stepper .n { width: 26px; min-width: 26px; }
+
+/* Slightly wider +/- buttons */
+.mcell .stepper button { width: 38px; min-width: 38px; }
+.mcell .stepper .n { width: 30px; min-width: 30px; }
+@media (max-width: 560px) {
+  /* 3-4 teams on a phone: keep them narrow enough to fit */
+  .entry.many .mcell .stepper button { width: 24px; min-width: 24px; }
+  .entry.many .mcell .stepper .n { width: 22px; min-width: 22px; }
+}
