@@ -1,22 +1,36 @@
 "use client";
 import { useEffect, useState } from "react";
-import { fetchGames, fetchLeagues, saveLeague } from "@/lib/client";
+import { deleteLeague, fetchGames, fetchLeagues, renameLeague, saveLeague } from "@/lib/client";
 import { DEFAULT_RULES, Game, autoOf, League, Rules, cleanName, leagueOf, newLeague } from "@/lib/game";
+
+type Panel = { name: string; mode: "scoring" | "rename" } | null;
 
 export default function LeaguesPage() {
   const [leagues, setLeagues] = useState<League[] | null>(null);
   const [games, setGames] = useState<Game[]>([]);
-  const [open, setOpen] = useState<string | null>(null);
+  const [panel, setPanel] = useState<Panel>(null);
   const [name, setName] = useState("");
+  const [newName, setNewName] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = async () => {
+    const gs = await fetchGames().catch(() => [] as Game[]);
+    setGames(gs);
+    setLeagues(await fetchLeagues(gs));
+  };
 
   useEffect(() => {
-    (async () => {
-      const gs = await fetchGames().catch(() => [] as Game[]);
-      setGames(gs);
-      setLeagues(await fetchLeagues(gs));
-    })();
+    load();
   }, []);
+
+  const count = (league: string) => games.filter((g) => leagueOf(g) === league).length;
+  const toggle = (league: string, mode: "scoring" | "rename") => {
+    setError("");
+    if (panel?.name === league && panel.mode === mode) return setPanel(null);
+    setPanel({ name: league, mode });
+    if (mode === "rename") setNewName(league);
+  };
 
   const add = async () => {
     setError("");
@@ -32,6 +46,43 @@ export default function LeaguesPage() {
     }
   };
 
+  const rename = async (from: string) => {
+    setError("");
+    const to = cleanName(newName);
+    if (!to) return setError("Enter a league name.");
+    if (to === from) return setPanel(null);
+    setBusy(true);
+    try {
+      await renameLeague(from, to);
+      setPanel(null);
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (league: string) => {
+    setError("");
+    const n = count(league);
+    const msg =
+      n > 0
+        ? `Delete the league "${league}" AND its ${n} game${n === 1 ? "" : "s"}?\n\nThe games and their stats are removed permanently. This cannot be undone.`
+        : `Delete the league "${league}"? This cannot be undone.`;
+    if (!confirm(msg)) return;
+    setBusy(true);
+    try {
+      await deleteLeague(league);
+      setPanel(null);
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <>
       <h1>Leagues</h1>
@@ -40,20 +91,50 @@ export default function LeaguesPage() {
         the rules they were scored with.
       </p>
       {leagues === null && <p className="muted">Loading…</p>}
+      {error && <div className="banner err">{error}</div>}
       {leagues?.map((l) => (
         <div key={l.name} className="card">
-          <div className="row">
-            <div className="grow">
-              <strong>{l.name}</strong>
-              <div className="small muted">
-                {games.filter((g) => leagueOf(g) === l.name).length} games
-              </div>
+          <div>
+            <strong>{l.name}</strong>
+            <div className="small muted">
+              {count(l.name)} game{count(l.name) === 1 ? "" : "s"}
             </div>
-            <button className="btn sm" onClick={() => setOpen(open === l.name ? null : l.name)}>
-              {open === l.name ? "Close" : "Scoring"}
+          </div>
+          <div className="row wrap-row" style={{ marginTop: 10 }}>
+            <button
+              className={`btn sm${panel?.name === l.name && panel.mode === "scoring" ? " primary" : ""}`}
+              onClick={() => toggle(l.name, "scoring")}
+            >
+              Scoring
+            </button>
+            <button
+              className={`btn sm${panel?.name === l.name && panel.mode === "rename" ? " primary" : ""}`}
+              onClick={() => toggle(l.name, "rename")}
+            >
+              Rename
+            </button>
+            <button className="btn sm danger" disabled={busy} onClick={() => remove(l.name)}>
+              Delete
             </button>
           </div>
-          {open === l.name && (
+          {panel?.name === l.name && panel.mode === "rename" && (
+            <div className="row" style={{ marginTop: 12 }}>
+              <input
+                type="text"
+                className="grow"
+                aria-label="New league name"
+                autoCapitalize="words"
+                maxLength={60}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && rename(l.name)}
+              />
+              <button className="btn primary" disabled={busy} onClick={() => rename(l.name)}>
+                Save
+              </button>
+            </div>
+          )}
+          {panel?.name === l.name && panel.mode === "scoring" && (
             <RulesEditor
               league={l}
               onSaved={(saved) => setLeagues((ls) => ls!.map((x) => (x.name === saved.name ? saved : x)))}
@@ -75,7 +156,6 @@ export default function LeaguesPage() {
         />
         <button className="btn primary" onClick={add}>Add</button>
       </div>
-      {error && <div className="banner err" style={{ marginTop: 12 }}>{error}</div>}
     </>
   );
 }

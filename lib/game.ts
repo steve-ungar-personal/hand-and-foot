@@ -12,11 +12,29 @@ export interface LineDef {
   auto?: { sumOf: string[]; atLeast: number };
 }
 
+export interface CardDef {
+  key: string;
+  label: string;
+  value: number;
+}
+
 export interface Rules {
   lines: LineDef[];
+  /** Card values for the card-count calculator. */
+  cards?: CardDef[];
   /** Minimum points to lay down, one entry per round. */
   rounds: { min: number }[];
 }
+
+export const DEFAULT_CARDS: CardDef[] = [
+  { key: "joker", label: "Jokers", value: 50 },
+  { key: "aceTwo", label: "Aces & 2s", value: 20 },
+  { key: "high", label: "K, Q, J, 10, 9, 8", value: 10 },
+  { key: "low", label: "7, 6, 5, 4", value: 5 },
+  { key: "black3", label: "Black 3s", value: -100 },
+  { key: "red3Plus", label: "Red 3s (+)", value: 100 },
+  { key: "red3Minus", label: "Red 3s (−)", value: -100 },
+];
 
 const TEN_BOOKS_AUTO = { sumOf: ["cleanBook", "dirtyBook"], atLeast: 10 };
 
@@ -32,6 +50,7 @@ export const DEFAULT_RULES: Rules = {
     { key: "someWild", label: "Some wild cards", value: -2000, kind: "count", phase: "end" },
   ],
   rounds: [{ min: 50 }, { min: 90 }, { min: 120 }, { min: 150 }],
+  cards: DEFAULT_CARDS,
 };
 
 export const CARD_VALUES = "Joker 50 · A & 2 20 · K–8 10 · 7–4 5 · Black 3 −100 · Red 3 ±100";
@@ -49,6 +68,8 @@ export interface TeamRound {
   counts: Record<string, number>;
   /** Card count incl. red 3s; may be negative. null = not entered yet. */
   cardCount: number | null;
+  /** Optional card-by-card tally used to calculate cardCount. */
+  cards?: Record<string, number>;
 }
 
 export interface Team {
@@ -74,6 +95,13 @@ export interface Game {
 }
 
 export const rulesOf = (g: Game) => g.rules ?? DEFAULT_RULES;
+export const cardsOf = (r: Rules) => r.cards ?? DEFAULT_CARDS;
+
+/** Card count from a card-by-card tally; null when nothing has been entered. */
+export function cardTally(tally: Record<string, number> | undefined, cards: CardDef[]): number | null {
+  if (!tally || !Object.values(tally).some((n) => n)) return null;
+  return cards.reduce((sum, c) => sum + (tally[c.key] ?? 0) * c.value, 0);
+}
 export const leagueOf = (g: Game) => g.league?.trim() || DEFAULT_LEAGUE;
 
 /** Auto rule for a line (older saved rules get the 10-books rule by key). */
@@ -189,7 +217,11 @@ export function isRules(x: unknown): x is Rules {
     Array.isArray(r.rounds) &&
     r.rounds.length >= 1 &&
     r.rounds.length <= 10 &&
-    r.rounds.every((x) => isNum(x.min))
+    r.rounds.every((x) => isNum(x.min)) &&
+    (r.cards === undefined ||
+      (Array.isArray(r.cards) &&
+        r.cards.length <= 20 &&
+        r.cards.every((c) => typeof c.key === "string" && typeof c.label === "string" && isNum(c.value))))
   );
 }
 

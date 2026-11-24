@@ -4,8 +4,9 @@ import { useParams, useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { deleteGame, loadGame, saveGame, setLastLeague } from "@/lib/client";
 import {
-  CARD_VALUES,
   applyAuto,
+  cardTally,
+  cardsOf,
   autoOf,
   Game,
   LineDef,
@@ -33,7 +34,6 @@ export default function GamePage() {
   const [game, setGame] = useState<Game | null>(null);
   const [missing, setMissing] = useState(false);
   const [view, setView] = useState<number | "sheet">(0);
-  const [team, setTeam] = useState(0);
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [notice, setNotice] = useState("");
   const dirty = useRef(false);
@@ -102,12 +102,11 @@ export default function GamePage() {
   const tot = totals(game);
   const round = view === "sheet" ? null : view;
 
-  const setRoundTeam = (fn: (tr: TeamRound, g: Game) => void) =>
+  const setRoundTeam = (team: number, fn: (tr: TeamRound, g: Game) => void) =>
     update((g) => fn(g.rounds[round!][team], g));
 
   const goRound = (r: number) => {
     setView(r);
-    setTeam(0);
     if (r > game.currentRound) update((g) => void (g.currentRound = r));
     window.scrollTo({ top: 0 });
   };
@@ -189,27 +188,22 @@ export default function GamePage() {
         </div>
         {round !== null && (
           <div className="teams" style={{ gridTemplateColumns: `repeat(${game.teams.length}, minmax(0, 1fr))` }}>
-            {game.teams.map((t, i) => (
-              <button key={i} className={`team-chip${team === i ? " on" : ""}`} onClick={() => setTeam(i)}>
-                <div className="nm">{teamLabel(t)}</div>
-                <div className={`rt${roundTotal(game.rounds[round][i], rules) < 0 ? " neg" : ""}`}>
-                  {fmt(roundTotal(game.rounds[round][i], rules))}
+            {game.teams.map((t, i) => {
+              const rt = roundTotal(game.rounds[round][i], rules);
+              return (
+                <div key={i} className="team-chip">
+                  <div className="nm">{teamLabel(t)}</div>
+                  <div className={`rt${rt < 0 ? " neg" : ""}`}>{fmt(rt)}</div>
+                  <div className="ct">Total {fmt(cumulative(game, i, round))}</div>
                 </div>
-                <div className="ct">Total {fmt(cumulative(game, i, round))}</div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
       {round !== null ? (
-        <RoundEntry
-          key={`${round}-${team}`}
-          game={game}
-          round={round}
-          team={team}
-          onChange={setRoundTeam}
-        />
+        <RoundEntry key={round} game={game} round={round} onChange={setRoundTeam} />
       ) : (
         <>
           {notice && <div className="banner">{notice}</div>}
@@ -248,17 +242,13 @@ export default function GamePage() {
           <div className="inner">
             <button
               className="btn"
-              disabled={round === 0 && team === 0}
-              onClick={() => (team > 0 ? setTeam(team - 1) : goRound(round - 1))}
-              aria-label="Back"
+              disabled={round === 0}
+              onClick={() => goRound(round - 1)}
+              aria-label="Previous round"
             >
-              ←
+              {round > 0 ? `← R${round}` : "←"}
             </button>
-            {team < game.teams.length - 1 ? (
-              <button className="btn primary grow" onClick={() => setTeam(team + 1)}>
-                Next: {teamLabel(game.teams[team + 1])} →
-              </button>
-            ) : round < nRounds - 1 ? (
+            {round < nRounds - 1 ? (
               <button className="btn primary grow" onClick={() => goRound(round + 1)}>
                 Round {round + 2} →
               </button>
@@ -281,74 +271,109 @@ export default function GamePage() {
 function RoundEntry({
   game,
   round,
-  team,
   onChange,
 }: {
   game: Game;
   round: number;
-  team: number;
-  onChange: (fn: (tr: TeamRound, g: Game) => void) => void;
+  onChange: (team: number, fn: (tr: TeamRound, g: Game) => void) => void;
 }) {
   const rules = rulesOf(game);
-  const tr = game.rounds[round][team];
+  const cards = cardsOf(rules);
+  const trs = game.rounds[round];
+  const cols = { gridTemplateColumns: `repeat(${game.teams.length}, minmax(0, 1fr))` };
   const start = rules.lines.filter((l) => l.phase === "start");
   const end = rules.lines.filter((l) => l.phase === "end");
-  const total = roundTotal(tr, rules);
 
-  const setCount = (key: string, n: number) =>
-    onChange((t, g) => {
+  const setCount = (team: number, key: string, n: number) =>
+    onChange(team, (t, g) => {
       if (n > 0) t.counts[key] = n;
       else delete t.counts[key];
       applyAuto(t, rulesOf(g));
     });
 
-  const toggle = (def: LineDef) =>
-    onChange((t, g) => {
+  const toggle = (team: number, def: LineDef) =>
+    onChange(team, (t, g) => {
       const on = !t.counts[def.key];
       // Only one team per round can go out.
       g.rounds[round].forEach((other) => delete other.counts[def.key]);
       if (on) t.counts[def.key] = 1;
     });
 
-  const row = (def: LineDef) => {
+  const setTally = (team: number, key: string, n: number) =>
+    onChange(team, (t, g) => {
+      t.cards = { ...(t.cards ?? {}) };
+      if (n > 0) t.cards[key] = n;
+      else delete t.cards[key];
+      t.cardCount = cardTally(t.cards, cardsOf(rulesOf(g)));
+    });
+
+  const cell = (def: LineDef, ti: number) => {
+    const tr = trs[ti];
     const n = tr.counts[def.key] ?? 0;
     const pts = linePoints(tr, def);
-    const holder =
-      def.kind === "toggle" ? game.rounds[round].findIndex((o, i) => i !== team && o.counts[def.key]) : -1;
     const auto = autoOf(def);
-    const autoSum = auto ? auto.sumOf.reduce((s, k) => s + (tr.counts[k] ?? 0), 0) : 0;
-    return (
-      <div className="line" key={def.key}>
-        <div className="line-label">
-          <div className="l">{def.label}</div>
-          <div className="v">
-            {def.kind === "toggle"
-              ? holder >= 0
-                ? `${teamLabel(game.teams[holder])} went out`
-                : `${fmt(def.value)} pts`
-              : auto
-                ? `Automatic · ${autoSum} of ${auto.atLeast} books`
-                : `${fmt(def.value)} each`}
-          </div>
-        </div>
-        {auto ? (
-          <span className={`auto-badge${n ? " on" : ""}`}>{n ? "✓ Yes" : "Not yet"}</span>
-        ) : def.kind === "toggle" ? (
-          <button className={`toggle${n ? " on" : ""}`} onClick={() => toggle(def)} aria-pressed={!!n}>
-            {n ? "✓ Went out" : "No"}
+    const label = teamLabel(game.teams[ti]);
+    let control;
+    if (auto) {
+      const sum = auto.sumOf.reduce((s, k) => s + (tr.counts[k] ?? 0), 0);
+      control = (
+        <span className={`auto-badge${n ? " on" : ""}`} title={`${sum} of ${auto.atLeast} books`}>
+          {n ? "✓ Yes" : `${sum}/${auto.atLeast}`}
+        </span>
+      );
+    } else if (def.kind === "toggle") {
+      control = (
+        <button
+          className={`toggle${n ? " on" : ""}`}
+          onClick={() => toggle(ti, def)}
+          aria-pressed={!!n}
+          aria-label={`${label}: ${def.label}`}
+        >
+          {n ? "✓ Out" : "No"}
+        </button>
+      );
+    } else {
+      control = (
+        <div className="stepper">
+          <button
+            onClick={() => setCount(ti, def.key, n - 1)}
+            disabled={n === 0}
+            aria-label={`${label}: fewer ${def.label}`}
+          >
+            −
           </button>
-        ) : (
-          <div className="stepper">
-            <button onClick={() => setCount(def.key, n - 1)} disabled={n === 0} aria-label={`Fewer ${def.label}`}>
-              −
-            </button>
-            <span className="n">{n}</span>
-            <button onClick={() => setCount(def.key, n + 1)} aria-label={`More ${def.label}`}>
-              +
-            </button>
-          </div>
-        )}
-        <div className={`line-pts${pts === 0 ? " zero" : pts < 0 ? " neg" : ""}`}>{fmt(pts)}</div>
+          <span className="n">{n}</span>
+          <button onClick={() => setCount(ti, def.key, n + 1)} aria-label={`${label}: more ${def.label}`}>
+            +
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="mcell" key={ti}>
+        {control}
+        <div className={`mpts${pts === 0 ? " zero" : pts < 0 ? " neg" : ""}`}>{fmt(pts)}</div>
+      </div>
+    );
+  };
+
+  const line = (def: LineDef) => {
+    const auto = autoOf(def);
+    return (
+      <div className="mline" key={def.key}>
+        <div className="mline-label">
+          <span className="l">{def.label}</span>
+          <span className="v">
+            {auto
+              ? `automatic at ${auto.atLeast}+ books`
+              : def.kind === "toggle"
+                ? fmt(def.value)
+                : `${fmt(def.value)} each`}
+          </span>
+        </div>
+        <div className="mcells" style={cols}>
+          {game.teams.map((_, ti) => cell(def, ti))}
+        </div>
       </div>
     );
   };
@@ -363,37 +388,117 @@ function RoundEntry({
       {start.length > 0 && (
         <>
           <div className="section-title">Start of hand</div>
-          <div className="lines">{start.map(row)}</div>
+          <div className="lines">{start.map(line)}</div>
         </>
       )}
 
       <div className="section-title">End of hand</div>
       <div className="lines">
-        {end.map(row)}
-        <div className="line">
-          <div className="line-label">
-            <div className="l">Card count</div>
-            <div className="v">incl. red 3s</div>
+        {end.map(line)}
+        <div className="mline">
+          <div className="mline-label">
+            <span className="l">Card count</span>
+            <span className="v">incl. red 3s</span>
           </div>
-          <CardCount value={tr.cardCount} onChange={(v) => onChange((t) => void (t.cardCount = v))} />
+          <div className="mcells" style={cols}>
+            {trs.map((tr, ti) => (
+              <div className="mcell" key={ti}>
+                <CardCount
+                  value={tr.cardCount}
+                  label={teamLabel(game.teams[ti])}
+                  onChange={(v) => onChange(ti, (t) => void (t.cardCount = v))}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mline total">
+          <div className="mline-label">
+            <span className="l">Round {round + 1} total</span>
+          </div>
+          <div className="mcells" style={cols}>
+            {trs.map((tr, ti) => {
+              const t = roundTotal(tr, rules);
+              return (
+                <div className={`mcell big${t < 0 ? " neg" : ""}`} key={ti}>
+                  {fmt(t)}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
-      <p className="small muted" style={{ margin: "6px 4px" }}>{CARD_VALUES}</p>
 
-      <div className="total-bar">
-        <span>
-          <strong>{teamLabel(game.teams[team])}</strong>
-          <br />
-          <span className="small muted">Round {round + 1} total</span>
-        </span>
-        <span className={`big${total < 0 ? " neg" : ""}`}>{fmt(total)}</span>
-      </div>
+      <details className="calc">
+        <summary>Card count calculator</summary>
+        <p className="small muted" style={{ margin: "0 4px 8px" }}>
+          Enter how many of each card the team has. The total fills in the card count above.
+        </p>
+        <div className="lines">
+          {cards.map((c) => (
+            <div className="mline" key={c.key}>
+              <div className="mline-label">
+                <span className="l">{c.label}</span>
+                <span className="v">{c.value > 0 ? `+${c.value}` : fmt(c.value)} each</span>
+              </div>
+              <div className="mcells" style={cols}>
+                {trs.map((tr, ti) => (
+                  <div className="mcell" key={ti}>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="tally"
+                      placeholder="0"
+                      aria-label={`${teamLabel(game.teams[ti])}: number of ${c.label}`}
+                      value={tr.cards?.[c.key] ? String(tr.cards[c.key]) : ""}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) =>
+                        setTally(ti, c.key, parseInt(e.target.value.replace(/\D/g, "") || "0", 10))
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div className="mline total">
+            <div className="mline-label">
+              <span className="l">Card count</span>
+            </div>
+            <div className="mcells" style={cols}>
+              {trs.map((tr, ti) => {
+                const v = cardTally(tr.cards, cards);
+                return (
+                  <div className={`mcell big${(v ?? 0) < 0 ? " neg" : ""}`} key={ti}>
+                    {v === null ? "–" : fmt(v)}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </details>
     </>
   );
 }
 
-function CardCount({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
+function CardCount({
+  value,
+  label,
+  onChange,
+}: {
+  value: number | null;
+  label: string;
+  onChange: (v: number | null) => void;
+}) {
   const [text, setText] = useState(value === null ? "" : String(value));
+
+  // Follow changes made elsewhere (e.g. the calculator).
+  useEffect(() => {
+    const cur = text === "" || text === "-" ? null : parseInt(text, 10);
+    if (cur !== value) setText(value === null ? "" : String(value));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   const commit = (t: string) => {
     if (!/^-?\d*$/.test(t)) return;
@@ -404,8 +509,8 @@ function CardCount({ value, onChange }: { value: number | null; onChange: (v: nu
   return (
     <div className="cc">
       <button
-        className="icon-btn sign"
-        aria-label="Make negative or positive"
+        className="sign"
+        aria-label={`${label}: make card count negative or positive`}
         onClick={() => commit(text.startsWith("-") ? text.slice(1) : `-${text}`)}
       >
         ±
@@ -418,7 +523,7 @@ function CardCount({ value, onChange }: { value: number | null; onChange: (v: nu
         value={text}
         onChange={(e) => commit(e.target.value.replace(/[^\d-]/g, ""))}
         onFocus={(e) => e.target.select()}
-        aria-label="Card count"
+        aria-label={`${label}: card count`}
         className={value !== null && value < 0 ? "neg" : ""}
       />
     </div>

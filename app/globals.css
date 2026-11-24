@@ -195,3 +195,41 @@ td.name { white-space: normal; min-width: 110px; }
 .link-btn.danger { color: var(--neg); }
 .auto-badge { min-width: 124px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px dashed var(--border); font-weight: 600; font-size: 0.9rem; color: var(--muted); flex: none; }
 .auto-badge.on { border-style: solid; border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+/* ---- Side-by-side team columns on the scoring page ---- */
+.team-chip { cursor: default; border-color: var(--border); }
+.mline { padding: 8px 10px 10px; }
+.mline + .mline { border-top: 1px solid var(--border); }
+.mline-label { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.mline-label .l { font-weight: 600; }
+.mline-label .v { font-size: 0.78rem; color: var(--muted); text-align: right; }
+.mcells { display: grid; gap: 6px; }
+.mcell { min-width: 0; display: flex; flex-direction: column; align-items: stretch; }
+.mcell.big { font-size: 1.25rem; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; }
+.mline.total { background: var(--surface-2); }
+.mpts { text-align: center; font-size: 0.8rem; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.mpts.zero { color: var(--muted); font-weight: 400; }
+.mcell .stepper { width: 100%; display: grid; grid-template-columns: 1fr auto 1fr; }
+.mcell .stepper button { width: auto; min-width: 30px; height: 42px; }
+.mcell .stepper .n { min-width: 26px; width: auto; padding: 0 2px; }
+.mcell .toggle, .mcell .auto-badge { width: 100%; min-width: 0; height: 42px; }
+.mcell .cc { display: grid; grid-template-columns: 34px 1fr; gap: 4px; }
+.mcell .cc .sign { height: 42px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); font-size: 1.1rem; cursor: pointer; padding: 0; }
+.mcell .cc input { width: 100%; min-width: 0; min-height: 42px; padding: 6px 8px; font-size: 1.05rem; }
+.mcell input.tally { width: 100%; min-width: 0; min-height: 42px; padding: 6px 8px; text-align: center; font-weight: 700; }
+
+details.calc { margin-top: 16px; }
+details.calc > summary {
+  cursor: pointer; list-style: none; padding: 14px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--border); font-weight: 600; margin-bottom: 8px;
+}
+details.calc > summary::-webkit-details-marker { display: none; }
+details.calc > summary::before { content: "▸ "; color: var(--muted); }
+details.calc[open] > summary::before { content: "▾ "; }
+
+/* iOS/iPadOS Safari gives date inputs an intrinsic width that ignores width:100%. */
+input[type="date"] {
+  -webkit-appearance: none; appearance: none;
+  display: block; min-width: 0; max-width: 100%;
+}
+input[type="date"]::-webkit-date-and-time-value { text-align: left; }

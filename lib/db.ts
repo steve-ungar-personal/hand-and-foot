@@ -4,7 +4,7 @@ import "server-only";
 import { neon } from "@neondatabase/serverless";
 import { promises as fs } from "fs";
 import path from "path";
-import type { Game, League } from "./game";
+import { DEFAULT_LEAGUE, newLeague, type Game, type League } from "./game";
 
 const url = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.STORAGE_URL;
 
@@ -15,7 +15,14 @@ interface Store {
   removeGame(id: string): Promise<void>;
   listLeagues(): Promise<League[]>;
   upsertLeague(l: League): Promise<void>;
+  /** Renames a league and moves its games. Returns the number of games moved. */
+  renameLeague(from: string, to: string): Promise<number>;
+  /** Deletes a league and all of its games. Returns the number of games deleted. */
+  deleteLeague(name: string): Promise<number>;
 }
+
+/** League name as stored on a game (older games without one belong to the default league). */
+const gameLeague = (g: Game) => g.league?.trim() || DEFAULT_LEAGUE;
 
 const byDate = (a: Game, b: Game) => b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt);
 
@@ -79,6 +86,32 @@ function neonStore(connection: string): Store {
         VALUES (${l.name}, ${JSON.stringify(l)}::jsonb, now())
         ON CONFLICT (name) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
     },
+    async renameLeague(from, to) {
+      await init();
+      const rows = await sql`SELECT data FROM leagues WHERE name = ${from}`;
+      const league: League = rows.length ? (rows[0].data as League) : newLeague(from);
+      const renamed = JSON.stringify({ ...league, name: to, updatedAt: new Date().toISOString() });
+      const [, , moved] = await sql.transaction([
+        sql`DELETE FROM leagues WHERE name = ${from}`,
+        sql`INSERT INTO leagues (name, data, updated_at) VALUES (${to}, ${renamed}::jsonb, now())`,
+        sql`
+          UPDATE games SET data = jsonb_set(data, '{league}', to_jsonb(${to}::text)), updated_at = now()
+          WHERE COALESCE(NULLIF(btrim(data->>'league'), ''), ${DEFAULT_LEAGUE}) = ${from}
+          RETURNING id`,
+      ]);
+      return moved.length;
+    },
+    async deleteLeague(name) {
+      await init();
+      const [deleted] = await sql.transaction([
+        sql`
+          DELETE FROM games
+          WHERE COALESCE(NULLIF(btrim(data->>'league'), ''), ${DEFAULT_LEAGUE}) = ${name}
+          RETURNING id`,
+        sql`DELETE FROM leagues WHERE name = ${name}`,
+      ]);
+      return deleted.length;
+    },
   };
 }
 
@@ -121,6 +154,32 @@ function fileStore(): Store {
       db.leagues[l.name] = l;
       await write(db);
     },
+    async renameLeague(from, to) {
+      const db = await read();
+      const league = db.leagues[from] ?? newLeague(from);
+      delete db.leagues[from];
+      db.leagues[to] = { ...league, name: to, updatedAt: new Date().toISOString() };
+      let moved = 0;
+      for (const g of Object.values(db.games))
+        if (gameLeague(g) === from) {
+          g.league = to;
+          moved++;
+        }
+      await write(db);
+      return moved;
+    },
+    async deleteLeague(name) {
+      const db = await read();
+      let deleted = 0;
+      for (const [id, g] of Object.entries(db.games))
+        if (gameLeague(g) === name) {
+          delete db.games[id];
+          deleted++;
+        }
+      delete db.leagues[name];
+      await write(db);
+      return deleted;
+    },
   };
 }
 
@@ -137,6 +196,8 @@ function missingStore(): Store {
     removeGame: fail,
     listLeagues: fail,
     upsertLeague: fail,
+    renameLeague: fail,
+    deleteLeague: fail,
   };
 }
 

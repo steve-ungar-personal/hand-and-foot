@@ -148,3 +148,22 @@ export async function deleteGame(id: string) {
   p.delete(id);
   setPending(p);
 }
+
+export async function renameLeague(from: string, to: string): Promise<{ name: string; games: number }> {
+  const r = await fetch(`/api/leagues/${encodeURIComponent(from)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: to }),
+  });
+  if (!r.ok) throw new Error(await errorOf(r));
+  const res = await r.json();
+  if (getLastLeague() === from) setLastLeague(res.name);
+  return res;
+}
+
+export async function deleteLeague(name: string): Promise<number> {
+  const r = await fetch(`/api/leagues/${encodeURIComponent(name)}`, { method: "DELETE" });
+  if (!r.ok) throw new Error(await errorOf(r));
+  if (getLastLeague() === name) lsDel(LAST_LEAGUE);
+  return (await r.json()).games;
+}
