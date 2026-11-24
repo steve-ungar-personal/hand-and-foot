@@ -6,7 +6,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import type { Game, League } from "./game";
 
-const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+const url = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.STORAGE_URL;
 
 interface Store {
   listGames(): Promise<Game[]>;
