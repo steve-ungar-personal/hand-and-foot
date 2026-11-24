@@ -19,7 +19,7 @@ export default function GameRow({ game }: { game: Game; showLeague?: boolean }) 
         )}
       </div>
       <div className="small muted" style={{ marginBottom: 6 }}>
-        Started {formatDate(game.date).replace(/^w+, /, "")} · {game.status === "complete" ? "Ended" : "Updated"}{" "}
+        Started {formatDate(game.date).replace(/^[A-Za-z]+, /, "")} · {game.status === "complete" ? "Ended" : "Updated"}{" "}
         {formatStamp(game.status === "complete" ? game.completedAt ?? game.updatedAt : game.updatedAt)}
       </div>
       <div className="game-row">
