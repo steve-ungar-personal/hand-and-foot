@@ -1,6 +1,7 @@
 # Deploys to Vercel from GitHub Actions. The Vercel project is NOT connected to Git;
 # this workflow is the only thing that deploys it.
-# Required repository secret: VERCEL_TOKEN (create at https://vercel.com/account/tokens).
+# Required repository secret: VERCEL_TOKEN, created while signed in to the LoserLeague
+# Vercel account (https://vercel.com/account/tokens), with access to the loser-league team.
 name: Deploy to Vercel
 
 on:
@@ -14,8 +15,8 @@ concurrency:
 
 env:
   # Not secret: identify the Vercel team and project.
-  VERCEL_ORG_ID: team_64Uo1J0vXFOzposcRd8SAIv5
-  VERCEL_PROJECT_ID: prj_JUebpIUUTmqYb8w2basscCSWRHa6
+  VERCEL_ORG_ID: team_83QzLfE9jVzrVmsygkXjbB72
+  VERCEL_PROJECT_ID: prj_CTEM8rDIjOyamrOEsSBzBPMyeCHF
 
 jobs:
   deploy:

@@ -19,9 +19,9 @@ Deploys run from GitHub Actions (`.github/workflows/deploy.yml`) on every push t
 
 One-time setup:
 
-1. Create a Vercel token at https://vercel.com/account/tokens and add it to the GitHub repo as the
+1. Signed in to the **LoserLeague** Vercel account, create a token at https://vercel.com/account/tokens (scope: loser-league) and add it to the GitHub repo as the
    secret `VERCEL_TOKEN` (Settings → Secrets and variables → Actions → New repository secret).
-2. In Vercel, open the `hand-and-foot` project → **Storage → Create Database → Neon** (free plan) and
+2. In Vercel (loser-league team), open the `hand-and-foot` project → **Storage → Create Database → Neon** (free plan) and
    connect it to the project. This sets `DATABASE_URL`. Re-run the workflow afterward.
 
 Tables are created automatically on first use. Neon's free tier sleeps when idle and wakes on the next request.
