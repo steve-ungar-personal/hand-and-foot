@@ -1,16 +1,13 @@
 import Link from "next/link";
-import { Game, fmt, formatDate, leaders, leagueOf, teamLabel, totals } from "@/lib/game";
+import { Game, fmt, formatDate, formatStamp, leaders, leagueOf, teamLabel, totals } from "@/lib/game";
 
-export default function GameRow({ game, showLeague }: { game: Game; showLeague?: boolean }) {
+export default function GameRow({ game }: { game: Game; showLeague?: boolean }) {
   const tot = totals(game);
   const lead = game.status === "complete" ? leaders(game) : [];
   return (
     <Link href={`/game/${game.id}`} className="card link">
       <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
-        <span className="small muted">
-          {formatDate(game.date)}
-          {showLeague && ` · ${leagueOf(game)}`}
-        </span>
+        <span className="small" style={{ fontWeight: 600 }}>{leagueOf(game)}</span>
         {game.status === "active" ? (
           <span className="pill live">
             Round {Math.min(game.currentRound + 1, game.rounds.length)} · in progress
@@ -20,6 +17,10 @@ export default function GameRow({ game, showLeague }: { game: Game; showLeague?:
         ) : (
           <span className="pill">Final</span>
         )}
+      </div>
+      <div className="small muted" style={{ marginBottom: 6 }}>
+        Started {formatDate(game.date).replace(/^w+, /, "")} · {game.status === "complete" ? "Ended" : "Updated"}{" "}
+        {formatStamp(game.status === "complete" ? game.completedAt ?? game.updatedAt : game.updatedAt)}
       </div>
       <div className="game-row">
         <div className="teams-list grow">

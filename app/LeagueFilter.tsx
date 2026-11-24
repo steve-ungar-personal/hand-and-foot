@@ -47,3 +47,26 @@ export default function LeagueFilter({
     </div>
   );
 }
+
+export function PlayerFilter({
+  player,
+  setPlayer,
+  names,
+}: {
+  player: string;
+  setPlayer: (p: string) => void;
+  names: string[];
+}) {
+  if (names.length === 0) return null;
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <label className="field" htmlFor="pf">Player</label>
+      <select id="pf" value={player} onChange={(e) => setPlayer(e.target.value)}>
+        <option value="">Everyone</option>
+        {names.map((n) => (
+          <option key={n} value={n}>{n}</option>
+        ))}
+      </select>
+    </div>
+  );
+}

@@ -4,7 +4,7 @@ import { fetchGames } from "@/lib/client";
 import type { Game } from "@/lib/game";
 import { allPlayerNames } from "@/lib/stats";
 import GameRow from "../GameRow";
-import LeagueFilter, { useLeagueFilter } from "../LeagueFilter";
+import LeagueFilter, { PlayerFilter, useLeagueFilter } from "../LeagueFilter";
 
 export default function History() {
   const [games, setGames] = useState<Game[] | null>(null);
@@ -39,19 +39,9 @@ export default function History() {
       {error && <div className="banner err">{error}</div>}
       {games === null && <p className="muted">Loading…</p>}
       <LeagueFilter {...lf} />
-      {inLeague.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <label className="field" htmlFor="pf">Player</label>
-          <select id="pf" value={player} onChange={(e) => setPlayer(e.target.value)}>
-            <option value="">Everyone</option>
-            {allPlayerNames(inLeague).map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-        </div>
-      )}
+      <PlayerFilter player={player} setPlayer={setPlayer} names={allPlayerNames(inLeague)} />
       {shown.map((g) => (
-        <GameRow key={g.id} game={g} showLeague={!lf.league} />
+        <GameRow key={g.id} game={g} />
       ))}
       {games && games.length === 0 && !error && <p className="muted">No games saved yet.</p>}
       {games && games.length > 0 && (

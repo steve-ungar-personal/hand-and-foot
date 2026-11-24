@@ -386,7 +386,7 @@ function RoundEntry({
     <>
       <div className="row" style={{ justifyContent: "space-between", margin: "4px 4px 0" }}>
         <strong>Round {round + 1}</strong>
-        <span className="small muted">{rules.rounds[round].min} min to lay down</span>
+        <span className="small muted">{rules.rounds[round].min} points minimum to lay down</span>
       </div>
 
       {start.length > 0 && (
@@ -579,7 +579,7 @@ function Sheet({ game, onDate }: { game: Game; onDate: (d: string) => void }) {
                 <Fragment key={ri}>
                   <tr className="hdr">
                     <td colSpan={cols + 1}>
-                      Round {ri + 1} <span className="small muted">· {rules.rounds[ri].min} min</span>
+                      Round {ri + 1} <span className="small muted">· {rules.rounds[ri].min} points minimum</span>
                     </td>
                   </tr>
                   {used.map((l) => (

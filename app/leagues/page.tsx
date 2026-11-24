@@ -215,12 +215,12 @@ function RulesEditor({ league, onSaved }: { league: League; onSaved: (l: League)
           </div>
         ))}
       </div>
-      <div className="section-title">Minimum to lay down</div>
+      <div className="section-title">Points minimum to lay down</div>
       <div className="stack">
         {league.rules.rounds.map((_, i) => (
           <div key={i} className="row">
             <span className="grow">Round {i + 1}</span>
-            {field(text.rounds[i], (v) => setText((t) => ({ ...t, rounds: t.rounds.map((x, j) => (j === i ? v : x)) })), `Round ${i + 1} minimum`)}
+            {field(text.rounds[i], (v) => setText((t) => ({ ...t, rounds: t.rounds.map((x, j) => (j === i ? v : x)) })), `Round ${i + 1} points minimum`)}
           </div>
         ))}
       </div>

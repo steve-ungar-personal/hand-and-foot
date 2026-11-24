@@ -252,3 +252,11 @@ export function isGame(x: unknown): x is Game {
     g.rounds.every((r) => Array.isArray(r) && r.length === g.teams.length)
   );
 }
+
+/** Short local date for an ISO timestamp. */
+export function formatStamp(iso: string) {
+  const d = new Date(iso);
+  return isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}

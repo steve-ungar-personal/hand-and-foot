@@ -3,11 +3,15 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fetchGames } from "@/lib/client";
 import type { Game } from "@/lib/game";
+import { allPlayerNames } from "@/lib/stats";
 import GameRow from "./GameRow";
+import LeagueFilter, { PlayerFilter, useLeagueFilter } from "./LeagueFilter";
 
 export default function Home() {
   const [games, setGames] = useState<Game[] | null>(null);
   const [error, setError] = useState("");
+  const [player, setPlayer] = useState("");
+  const lf = useLeagueFilter(games);
 
   useEffect(() => {
     fetchGames()
@@ -18,8 +22,10 @@ export default function Home() {
       });
   }, []);
 
-  const active = games?.filter((g) => g.status === "active") ?? [];
-  const recent = games?.filter((g) => g.status === "complete").slice(0, 5) ?? [];
+  const inLeague = lf.filtered ?? [];
+  const shown = player ? inLeague.filter((g) => g.teams.some((t) => t.players.includes(player))) : inLeague;
+  const active = shown.filter((g) => g.status === "active");
+  const recent = shown.filter((g) => g.status === "complete").slice(0, 5);
 
   return (
     <>
@@ -28,12 +34,14 @@ export default function Home() {
       </Link>
       {error && <div className="banner err">Couldn&apos;t load saved games: {error}</div>}
       {games === null && <p className="muted">Loading…</p>}
+      <LeagueFilter {...lf} />
+      <PlayerFilter player={player} setPlayer={setPlayer} names={allPlayerNames(inLeague)} />
 
       {active.length > 0 && (
         <>
           <h2>Resume a game</h2>
           {active.map((g) => (
-            <GameRow key={g.id} game={g} showLeague />
+            <GameRow key={g.id} game={g} />
           ))}
         </>
       )}
@@ -42,7 +50,7 @@ export default function Home() {
         <>
           <h2>Recent results</h2>
           {recent.map((g) => (
-            <GameRow key={g.id} game={g} showLeague />
+            <GameRow key={g.id} game={g} />
           ))}
           <Link href="/history" className="btn block">All games</Link>
         </>
