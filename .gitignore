@@ -155,3 +155,13 @@ vite.config.ts.timestamp-*
 .nx/cache
 .nx/workspace-data
 .nx/migrate-runs
+
+# Hand & Foot app
+node_modules
+.data
+.env*.local
+.vercel
+next-env.d.ts
+
+# Claude Code local settings
+.claude/settings.local.json
