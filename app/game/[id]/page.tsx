@@ -286,7 +286,7 @@ function RoundEntry({
   const cols = { gridTemplateColumns: `repeat(${game.teams.length}, minmax(0, 1fr))` };
   const start = rules.lines.filter((l) => l.phase === "start");
   const end = rules.lines.filter((l) => l.phase === "end");
-  const lc = `lines entry${game.teams.length > 2 ? " many" : ""}`;
+  const lc = `lines entry${game.teams.length > 2 ? " many" : ""}${game.teams.length > 4 ? " many6" : ""}`;
 
   const setCount = (team: number, key: string, n: number) =>
     onChange(team, (t, g) => {
@@ -401,7 +401,7 @@ function RoundEntry({
         {end.map(line)}
         <div className="mline">
           <div className="mline-label">
-            <span className="l">Card count</span>
+            <span className="l">Card points</span>
             <span className="v">incl. red 3s</span>
           </div>
           <div className="mcells" style={cols}>
@@ -434,9 +434,9 @@ function RoundEntry({
       </div>
 
       <details className="calc">
-        <summary>Card count calculator</summary>
+        <summary>Card points calculator</summary>
         <p className="small muted" style={{ margin: "0 4px 8px" }}>
-          Enter how many of each card the team has. The total fills in the card count above.
+          Enter how many of each card the team has. The total fills in the card points above.
         </p>
         <div className={lc}>
           {cards.map((c) => (
@@ -467,7 +467,7 @@ function RoundEntry({
           ))}
           <div className="mline total">
             <div className="mline-label">
-              <span className="l">Card count</span>
+              <span className="l">Card points</span>
             </div>
             <div className="mcells" style={cols}>
               {trs.map((tr, ti) => {
@@ -514,7 +514,7 @@ function CardCount({
     <div className="cc">
       <button
         className="sign"
-        aria-label={`${label}: make card count negative or positive`}
+        aria-label={`${label}: make card points negative or positive`}
         onClick={() => commit(text.startsWith("-") ? text.slice(1) : `-${text}`)}
       >
         ±
@@ -527,7 +527,7 @@ function CardCount({
         value={text}
         onChange={(e) => commit(e.target.value.replace(/[^\d-]/g, ""))}
         onFocus={(e) => e.target.select()}
-        aria-label={`${label}: card count`}
+        aria-label={`${label}: card points`}
         className={value !== null && value < 0 ? "neg" : ""}
       />
     </div>
@@ -591,7 +591,7 @@ function Sheet({ game, onDate }: { game: Game; onDate: (d: string) => void }) {
                     </tr>
                   ))}
                   <tr>
-                    <td>Card count</td>
+                    <td>Card points</td>
                     {r.map((tr, ti) => (
                       <td key={ti} className={(tr.cardCount ?? 0) < 0 ? "neg" : ""}>
                         {tr.cardCount === null ? "" : fmt(tr.cardCount)}

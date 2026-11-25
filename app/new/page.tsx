@@ -186,7 +186,7 @@ export default function NewGame() {
         </div>
       ))}
 
-      {teams.length < 4 && (
+      {teams.length < 6 && (
         <button className="btn block" onClick={() => setTeams((ts) => [...ts, { players: ["", ""] }])}>
           + Add team
         </button>

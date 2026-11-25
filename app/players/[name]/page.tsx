@@ -104,7 +104,7 @@ export default function PlayerPage() {
                   </tr>
                 ))}
                 <tr>
-                  <td>Card count points</td>
+                  <td>Card points</td>
                   <td>{fmt(p.cardCount)}</td>
                   <td>{fmt(Math.round(p.cardCount / p.games))}</td>
                 </tr>
