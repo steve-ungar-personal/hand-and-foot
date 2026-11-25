@@ -269,18 +269,27 @@ input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 .mcell .cc { display: inline-flex; align-self: center; width: 122px; height: 40px; gap: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg, transparent); }
 .mcell .cc .sign { width: 44px; min-width: 44px; height: 100%; border: 0; border-radius: 0; background: var(--surface-2); font-size: 1.25rem; }
 .mcell .cc input { flex: 1; width: auto; min-width: 0; height: 100%; min-height: 0; border: 0; border-radius: 0; padding: 0 4px; text-align: center; font-size: 1.05rem; }
+/* 5-6 teams (any screen): stack the controls vertically so each column stays narrow */
+.entry.many6 .mcells { column-gap: 6px; }
+.entry.many6 .mcell .stepper { display: flex; flex-direction: column; width: 100%; }
+.entry.many6 .mcell .stepper button { width: 100%; min-width: 0; height: 34px; }
+.entry.many6 .mcell .stepper button:last-child { order: 1; }
+.entry.many6 .mcell .stepper .n { order: 2; width: 100%; min-width: 0; height: 30px; line-height: 30px; }
+.entry.many6 .mcell .stepper button:first-child { order: 3; }
+.entry.many6 .mcell .cc { width: 100%; height: auto; flex-direction: column; }
+.entry.many6 .mcell .cc .sign { width: 100%; min-width: 0; height: 34px; }
+.entry.many6 .mcell .cc input { width: 100%; height: 36px; font-size: 0.85rem; padding: 0 1px; }
 @media (max-width: 560px) {
-  .entry.many .mcell .cc { width: 74px; }
   .entry.many .mcell .stepper button { width: 26px; min-width: 26px; }
   .entry.many .mcell .stepper .n { width: 22px; min-width: 22px; }
-  .entry.many6 .mcells { column-gap: 6px; }
-  /* 5-6 teams: stack the controls vertically so each column stays narrow */
-  .entry.many6 .mcell .stepper { display: flex; flex-direction: column; width: 100%; }
-  .entry.many6 .mcell .stepper button { width: 100%; min-width: 0; height: 34px; }
-  .entry.many6 .mcell .stepper button:last-child { order: 1; }
-  .entry.many6 .mcell .stepper .n { order: 2; width: 100%; min-width: 0; height: 30px; line-height: 30px; }
-  .entry.many6 .mcell .stepper button:first-child { order: 3; }
-  .entry.many6 .mcell .cc { width: 100%; height: auto; flex-direction: column; }
-  .entry.many6 .mcell .cc .sign { width: 100%; min-width: 0; height: 34px; }
-  .entry.many6 .mcell .cc input { width: 100%; height: 34px; font-size: 0.95rem; padding: 0 2px; }
+  /* 3-4 teams on a phone: points box stacks too so 5-digit scores fit */
+  .entry.many .mcell .cc { width: 100%; height: auto; flex-direction: column; }
+  .entry.many .mcell .cc .sign { width: 100%; min-width: 0; height: 34px; }
+  .entry.many .mcell .cc input { width: 100%; height: 36px; font-size: 0.95rem; padding: 0 2px; }
+}
+/* the 5-6 team rules above must win over the 3-4 team phone rules */
+@media (max-width: 560px) {
+  .entry.many6 .mcell .stepper button { width: 100%; min-width: 0; }
+  .entry.many6 .mcell .stepper .n { width: 100%; min-width: 0; }
+  .entry.many6 .mcell .cc input { font-size: 0.85rem; padding: 0 1px; }
 }
