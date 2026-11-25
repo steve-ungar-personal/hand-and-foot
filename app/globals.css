@@ -293,3 +293,13 @@ input[type="date"]::-webkit-date-and-time-value { text-align: left; }
   .entry.many6 .mcell .stepper .n { width: 100%; min-width: 0; }
   .entry.many6 .mcell .cc input { font-size: 0.85rem; padding: 0 1px; }
 }
+
+/* ---- Scores shrink to their column, so 5-6 digit numbers never overlap.
+   About 3.8em holds "-98,765", so 26cqi keeps it inside the column. ---- */
+.teams .team-chip { padding-left: 4px; padding-right: 4px; text-align: center; container-type: inline-size; }
+.team-chip .rt { font-size: min(1.15rem, 26cqi); }
+.team-chip .ct { font-size: min(0.75rem, 25cqi); }
+.mcell.big { container-type: inline-size; }
+.mcell.big .fit { font-size: min(1em, 26cqi); white-space: nowrap; }
+.entry.many6 .mcell { container-type: inline-size; }
+.entry.many6 .mcell .cc input { font-size: min(0.85rem, 27cqi); }

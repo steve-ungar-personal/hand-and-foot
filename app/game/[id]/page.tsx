@@ -425,7 +425,7 @@ function RoundEntry({
               const t = roundTotal(tr, rules);
               return (
                 <div className={`mcell big${t < 0 ? " neg" : ""}`} key={ti}>
-                  {fmt(t)}
+                  <span className="fit">{fmt(t)}</span>
                 </div>
               );
             })}
@@ -474,7 +474,7 @@ function RoundEntry({
                 const v = cardTally(tr.cards, cards);
                 return (
                   <div className={`mcell big${(v ?? 0) < 0 ? " neg" : ""}`} key={ti}>
-                    {v === null ? "–" : fmt(v)}
+                    <span className="fit">{v === null ? "–" : fmt(v)}</span>
                   </div>
                 );
               })}
