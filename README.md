@@ -43,4 +43,4 @@ Tables are created automatically on first use. Neon's free tier sleeps when idle
 - **Daily backup**: a Vercel cron job (`vercel.json`, 10:00 UTC) calls `/api/backup`, which saves games,
   leagues and teams to `backups/` in Blob storage. One-time setup in Vercel: connect a **private** Blob
   store to the project (Storage tab), add a `CRON_SECRET` environment variable (a long random string)
-  for Production, then redeploy. Download backups from the store's page. Old ones are never deleted.
+  for Production, then redeploy. Download backups from the store's page. Each successful run deletes backups older than 90 days.
