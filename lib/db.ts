@@ -4,7 +4,7 @@ import "server-only";
 import { neon } from "@neondatabase/serverless";
 import { promises as fs } from "fs";
 import path from "path";
-import { DEFAULT_LEAGUE, newLeague, type Game, type League } from "./game";
+import { DEFAULT_LEAGUE, newLeague, sameName, type Game, type League, type SavedTeam } from "./game";
 
 const url = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.STORAGE_URL;
 
@@ -19,6 +19,12 @@ interface Store {
   renameLeague(from: string, to: string): Promise<number>;
   /** Deletes a league and all of its games. Returns the number of games deleted. */
   deleteLeague(name: string): Promise<number>;
+  listTeams(): Promise<SavedTeam[]>;
+  addTeam(t: SavedTeam): Promise<void>;
+  /** Replaces the saved team `from`. A new name is also applied to games that used the old one. */
+  updateTeam(from: string, t: SavedTeam): Promise<void>;
+  /** Forgets a saved team. Games that used it are left as they are. */
+  deleteTeam(name: string): Promise<void>;
 }
 
 /** League name as stored on a game (older games without one belong to the default league). */
@@ -41,6 +47,12 @@ function neonStore(connection: string): Store {
         )`;
       await sql`
         CREATE TABLE IF NOT EXISTS leagues (
+          name text PRIMARY KEY,
+          data jsonb NOT NULL,
+          updated_at timestamptz NOT NULL DEFAULT now()
+        )`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS teams (
           name text PRIMARY KEY,
           data jsonb NOT NULL,
           updated_at timestamptz NOT NULL DEFAULT now()
@@ -112,11 +124,44 @@ function neonStore(connection: string): Store {
       ]);
       return deleted.length;
     },
+    async listTeams() {
+      await init();
+      const rows = await sql`SELECT data FROM teams ORDER BY lower(name)`;
+      return rows.map((r) => r.data as SavedTeam);
+    },
+    async addTeam(t) {
+      await init();
+      await sql`INSERT INTO teams (name, data) VALUES (${t.name}, ${JSON.stringify(t)}::jsonb)`;
+    },
+    async updateTeam(from, t) {
+      await init();
+      const queries = [
+        sql`DELETE FROM teams WHERE name = ${from}`,
+        sql`INSERT INTO teams (name, data, updated_at) VALUES (${t.name}, ${JSON.stringify(t)}::jsonb, now())`,
+      ];
+      if (t.name !== from)
+        queries.push(sql`
+          UPDATE games SET updated_at = now(), data = jsonb_set(data, '{teams}', (
+            SELECT jsonb_agg(
+              CASE WHEN lower(e.team->>'name') = lower(${from})
+                THEN jsonb_set(e.team, '{name}', to_jsonb(${t.name}::text))
+                ELSE e.team END
+              ORDER BY e.i)
+            FROM jsonb_array_elements(data->'teams') WITH ORDINALITY AS e(team, i)))
+          WHERE EXISTS (
+            SELECT 1 FROM jsonb_array_elements(data->'teams') AS x(team)
+            WHERE lower(x.team->>'name') = lower(${from}))`);
+      await sql.transaction(queries);
+    },
+    async deleteTeam(name) {
+      await init();
+      await sql`DELETE FROM teams WHERE name = ${name}`;
+    },
   };
 }
 
 function fileStore(): Store {
-  type Db = { games: Record<string, Game>; leagues: Record<string, League> };
+  type Db = { games: Record<string, Game>; leagues: Record<string, League>; teams?: Record<string, SavedTeam> };
   const file = path.join(process.cwd(), ".data", "db.json");
   const read = async (): Promise<Db> => {
     try {
@@ -180,6 +225,29 @@ function fileStore(): Store {
       await write(db);
       return deleted;
     },
+    async listTeams() {
+      return Object.values((await read()).teams ?? {}).sort((a, b) => a.name.localeCompare(b.name));
+    },
+    async addTeam(t) {
+      const db = await read();
+      (db.teams ??= {})[t.name] = t;
+      await write(db);
+    },
+    async updateTeam(from, t) {
+      const db = await read();
+      const teams = (db.teams ??= {});
+      delete teams[from];
+      teams[t.name] = t;
+      if (t.name !== from)
+        for (const g of Object.values(db.games))
+          for (const team of g.teams) if (team.name && sameName(team.name, from)) team.name = t.name;
+      await write(db);
+    },
+    async deleteTeam(name) {
+      const db = await read();
+      delete db.teams?.[name];
+      await write(db);
+    },
   };
 }
 
@@ -198,6 +266,10 @@ function missingStore(): Store {
     upsertLeague: fail,
     renameLeague: fail,
     deleteLeague: fail,
+    listTeams: fail,
+    addTeam: fail,
+    updateTeam: fail,
+    deleteTeam: fail,
   };
 }
 

@@ -145,7 +145,7 @@ export default function GamePage() {
   const rematch = async () => {
     const g = newGame(
       todayLocal(),
-      game.teams.map((t) => ({ players: [...t.players] })),
+      structuredClone(game.teams),
       leagueOf(game),
       rules,
     );
@@ -568,7 +568,10 @@ function Sheet({ game, onDate }: { game: Game; onDate: (d: string) => void }) {
             <tr>
               <th></th>
               {game.teams.map((t, i) => (
-                <th key={i} style={{ whiteSpace: "normal" }}>{teamLabel(t)}</th>
+                <th key={i} style={{ whiteSpace: "normal" }}>
+                  {teamLabel(t)}
+                  {t.name && <div style={{ fontWeight: 400 }}>{t.players.join(" & ")}</div>}
+                </th>
               ))}
             </tr>
           </thead>

@@ -2,22 +2,41 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { fetchGames, fetchLeagues, getLastLeague, saveGame, saveLeague, setLastLeague } from "@/lib/client";
+import {
+  createTeam,
+  fetchGames,
+  fetchLeagues,
+  fetchTeams,
+  getFilter,
+  saveGame,
+  saveLeague,
+  setFilter,
+  setLastLeague,
+  updateTeam,
+} from "@/lib/client";
 import {
   DEFAULT_LEAGUE,
   Game,
   League,
+  MAX_TEAM_PLAYERS,
+  SavedTeam,
   cleanName,
   leagueOf,
   newGame,
   newLeague,
+  sameName,
+  samePlayers,
   teamLabel,
+  teamProblem,
   todayLocal,
 } from "@/lib/game";
 import { allPlayerNames } from "@/lib/stats";
+import TeamPicker from "./TeamPicker";
 
-type Draft = { players: string[] };
-const blank = (): Draft[] => [{ players: ["", ""] }, { players: ["", ""] }];
+/** updateSaved: replace the saved lineup of this name with these players when the game starts. */
+type Draft = { name: string; players: string[]; updateSaved?: boolean };
+const emptyDraft = (): Draft => ({ name: "", players: ["", ""] });
+const blank = (): Draft[] => [emptyDraft(), emptyDraft()];
 const NEW = "__new__";
 
 export default function NewGame() {
@@ -28,18 +47,18 @@ export default function NewGame() {
   const [leagues, setLeagues] = useState<League[] | null>(null);
   const [league, setLeague] = useState(""); // league name or NEW
   const [newName, setNewName] = useState("");
+  const [saved, setSaved] = useState<SavedTeam[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    fetchTeams().then(setSaved).catch(() => {}); // teams can still be typed in without them
     (async () => {
       const gs = await fetchGames().catch(() => [] as Game[]);
       const ls = await fetchLeagues(gs);
       setGames(gs);
       setLeagues(ls);
-      const last = getLastLeague();
-      if (last && ls.some((l) => l.name === last)) setLeague(last);
-      else if (ls.length) setLeague(ls[0].name);
+      if (ls.length) setLeague(ls[0].name); // sorted by name
       else {
         setLeague(NEW);
         setNewName(DEFAULT_LEAGUE);
@@ -53,15 +72,17 @@ export default function NewGame() {
   // League members first in the suggestions, then everyone else.
   const known = useMemo(() => {
     const inLeague = allPlayerNames(leagueGames);
-    return [...inLeague, ...allPlayerNames(games).filter((n) => !inLeague.includes(n))];
-  }, [games, leagueGames]);
+    const played = [...inLeague, ...allPlayerNames(games).filter((n) => !inLeague.includes(n))];
+    return [...new Set([...played, ...saved.flatMap((t) => t.players)])];
+  }, [games, leagueGames, saved]);
 
+  const patchTeam = (ti: number, fn: (t: Draft) => Partial<Draft>) =>
+    setTeams((ts) => ts.map((t, i) => (i !== ti ? t : { ...t, ...fn(t) })));
   const setPlayer = (ti: number, pi: number, v: string) =>
-    setTeams((ts) => ts.map((t, i) => (i !== ti ? t : { players: t.players.map((p, j) => (j === pi ? v : p)) })));
-  const addPlayer = (ti: number) =>
-    setTeams((ts) => ts.map((t, i) => (i !== ti ? t : { players: [...t.players, ""] })));
+    patchTeam(ti, (t) => ({ players: t.players.map((p, j) => (j === pi ? v : p)) }));
+  const addPlayer = (ti: number) => patchTeam(ti, (t) => ({ players: [...t.players, ""] }));
   const removePlayer = (ti: number, pi: number) =>
-    setTeams((ts) => ts.map((t, i) => (i !== ti ? t : { players: t.players.filter((_, j) => j !== pi) })));
+    patchTeam(ti, (t) => ({ players: t.players.filter((_, j) => j !== pi) }));
 
   // Match an existing player's spelling regardless of case.
   const canonical = (n: string) => {
@@ -73,10 +94,22 @@ export default function NewGame() {
     setError("");
     if (!leagueName) return setError("Enter a league name.");
     if (leagueName.length > 60) return setError("League name is too long.");
-    const cleaned = teams.map((t) => ({ players: t.players.map(canonical).filter(Boolean) }));
+    const drafts = teams.map((t) => {
+      const typed = cleanName(t.name);
+      const match = saved.find((s) => sameName(s.name, typed));
+      const players = t.players.map(canonical).filter(Boolean);
+      return { name: match?.name ?? typed, players, match, updateSaved: t.updateSaved };
+    });
+    const cleaned = drafts.map(({ name, players }) => (name ? { name, players } : { players }));
     if (cleaned.some((t) => t.players.length === 0)) return setError("Every team needs at least one player.");
     const all = cleaned.flatMap((t) => t.players.map((p) => p.toLowerCase()));
     if (new Set(all).size !== all.length) return setError("A player is listed twice.");
+    const names = drafts.map((t) => t.name.toLowerCase()).filter(Boolean);
+    if (new Set(names).size !== names.length) return setError("Two teams have the same name.");
+    for (const t of drafts) {
+      const problem = t.name && teamProblem(t.name, t.players);
+      if (problem) return setError(problem);
+    }
 
     setBusy(true);
     let lg = leagues?.find((l) => l.name.toLowerCase() === leagueName.toLowerCase());
@@ -85,6 +118,17 @@ export default function NewGame() {
       await saveLeague(lg).catch(() => {}); // a game naming the league still shows it later
     }
     setLastLeague(lg.name);
+    // Keep a league filter from hiding the game being started.
+    if (getFilter("league")) setFilter("league", lg.name);
+    // Remember named teams. A failure here (e.g. offline) must not block the game.
+    await Promise.all(
+      drafts.map(async (t) => {
+        if (!t.name) return;
+        if (!t.match) await createTeam(t).catch(() => {});
+        else if (t.updateSaved && !samePlayers(t.match.players, t.players))
+          await updateTeam(t.match.name, t).catch(() => {});
+      }),
+    );
     const g = newGame(date, cleaned, lg.name, lg.rules);
     await saveGame(g); // falls back to device storage if offline
     router.push(`/game/${g.id}`);
@@ -120,7 +164,7 @@ export default function NewGame() {
               placeholder="e.g. Tuesday Night"
             />
             <p className="small muted" style={{ margin: "6px 0 0" }}>
-              Uses the standard scoring. Change it any time under <Link href="/leagues">Leagues</Link>.
+              Uses the standard scoring. Change it any time under <Link href="/leagues">Admin → Leagues</Link>.
             </p>
           </div>
         )}
@@ -134,7 +178,7 @@ export default function NewGame() {
         <button
           className="btn block"
           style={{ marginBottom: 12, flexWrap: "wrap", padding: "8px 14px" }}
-          onClick={() => setTeams(lastGame.teams.map((t) => ({ players: [...t.players] })))}
+          onClick={() => setTeams(lastGame.teams.map((t) => ({ name: t.name ?? "", players: [...t.players] })))}
         >
           ↻ Same teams as last game
           <span className="small muted" style={{ fontWeight: 400 }}>
@@ -159,6 +203,17 @@ export default function NewGame() {
               </button>
             )}
           </h3>
+          <TeamPicker
+            id={`team-${ti}`}
+            name={t.name}
+            players={t.players}
+            saved={saved}
+            takenNames={teams.filter((_, i) => i !== ti).map((o) => o.name)}
+            updateSaved={!!t.updateSaved}
+            onName={(name) => patchTeam(ti, () => ({ name, updateSaved: false }))}
+            onPick={(s) => patchTeam(ti, () => ({ name: s.name, players: [...s.players], updateSaved: false }))}
+            onUpdateSaved={(updateSaved) => patchTeam(ti, () => ({ updateSaved }))}
+          />
           <div className="stack">
             {t.players.map((p, pi) => (
               <div key={pi} className="row">
@@ -180,14 +235,16 @@ export default function NewGame() {
               </div>
             ))}
           </div>
-          <button className="btn sm" style={{ marginTop: 10 }} onClick={() => addPlayer(ti)}>
-            + Add player
-          </button>
+          {t.players.length < MAX_TEAM_PLAYERS && (
+            <button className="btn sm" style={{ marginTop: 10 }} onClick={() => addPlayer(ti)}>
+              + Add player
+            </button>
+          )}
         </div>
       ))}
 
       {teams.length < 6 && (
-        <button className="btn block" onClick={() => setTeams((ts) => [...ts, { players: ["", ""] }])}>
+        <button className="btn block" onClick={() => setTeams((ts) => [...ts, emptyDraft()])}>
           + Add team
         </button>
       )}

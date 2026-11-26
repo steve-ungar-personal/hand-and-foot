@@ -77,6 +77,16 @@ export interface Team {
   name?: string;
 }
 
+/** A team remembered by name, so it can be picked when starting a game. */
+export interface SavedTeam {
+  name: string;
+  players: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const MAX_TEAM_PLAYERS = 8;
+
 export interface Game {
   id: string;
   league?: string;
@@ -230,6 +240,29 @@ export function isLeague(x: unknown): x is League {
   return !!l && typeof l.name === "string" && l.name.trim().length > 0 && l.name.length <= 60 && isRules(l.rules);
 }
 
+export const sameName = (a: string, b: string) => cleanName(a).toLowerCase() === cleanName(b).toLowerCase();
+
+/** Same people, ignoring order and capitalization. */
+export function samePlayers(a: string[], b: string[]) {
+  const key = (p: string[]) => JSON.stringify(p.map((n) => cleanName(n).toLowerCase()).sort());
+  return key(a) === key(b);
+}
+
+/** Why a team name and lineup can't be saved, or null if they can. */
+export function teamProblem(name: string, players: string[]): string | null {
+  if (!name) return "Enter a team name.";
+  if (name.length > 60) return "Team name is too long (up to 60 characters).";
+  if (!players.length) return "A team needs at least one player.";
+  if (players.length > MAX_TEAM_PLAYERS) return `A team can have up to ${MAX_TEAM_PLAYERS} players.`;
+  if (new Set(players.map((p) => p.toLowerCase())).size !== players.length) return "A player is listed twice.";
+  return null;
+}
+
+export const newSavedTeam = (name: string, players: string[]): SavedTeam => {
+  const now = new Date().toISOString();
+  return { name, players: [...players], createdAt: now, updatedAt: now };
+};
+
 /** Basic shape check for data coming into the API. */
 export function isGame(x: unknown): x is Game {
   const g = x as Game;
@@ -246,7 +279,12 @@ export function isGame(x: unknown): x is Game {
     Array.isArray(g.teams) &&
     g.teams.length >= 2 &&
     g.teams.length <= 8 &&
-    g.teams.every((t) => Array.isArray(t.players) && t.players.every((p) => typeof p === "string")) &&
+    g.teams.every(
+      (t) =>
+        Array.isArray(t.players) &&
+        t.players.every((p) => typeof p === "string") &&
+        (t.name === undefined || (typeof t.name === "string" && t.name.length <= 60)),
+    ) &&
     Array.isArray(g.rounds) &&
     g.rounds.length === rulesOf(g).rounds.length &&
     g.rounds.every((r) => Array.isArray(r) && r.length === g.teams.length)

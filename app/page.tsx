@@ -5,12 +5,12 @@ import { fetchGames } from "@/lib/client";
 import type { Game } from "@/lib/game";
 import { allPlayerNames } from "@/lib/stats";
 import GameRow from "./GameRow";
-import LeagueFilter, { PlayerFilter, useLeagueFilter } from "./LeagueFilter";
+import LeagueFilter, { PlayerFilter, useLeagueFilter, useStickyFilter } from "./LeagueFilter";
 
 export default function Home() {
   const [games, setGames] = useState<Game[] | null>(null);
   const [error, setError] = useState("");
-  const [player, setPlayer] = useState("");
+  const [chosenPlayer, setPlayer] = useStickyFilter("player");
   const lf = useLeagueFilter(games);
 
   useEffect(() => {
@@ -23,6 +23,8 @@ export default function Home() {
   }, []);
 
   const inLeague = lf.filtered ?? [];
+  const names = allPlayerNames(inLeague);
+  const player = chosenPlayer && names.includes(chosenPlayer) ? chosenPlayer : "";
   const shown = player ? inLeague.filter((g) => g.teams.some((t) => t.players.includes(player))) : inLeague;
   const active = shown.filter((g) => g.status === "active");
   const recent = shown.filter((g) => g.status === "complete").slice(0, 5);
@@ -35,7 +37,7 @@ export default function Home() {
       {error && <div className="banner err">Couldn&apos;t load saved games: {error}</div>}
       {games === null && <p className="muted">Loading…</p>}
       <LeagueFilter {...lf} />
-      <PlayerFilter player={player} setPlayer={setPlayer} names={allPlayerNames(inLeague)} />
+      <PlayerFilter player={player} setPlayer={setPlayer} names={names} />
 
       {active.length > 0 && (
         <>
@@ -59,7 +61,6 @@ export default function Home() {
       {games !== null && games.length === 0 && !error && (
         <p className="muted">No games yet. Start one above — it saves automatically as you score.</p>
       )}
-      <Link href="/leagues" className="btn block" style={{ marginTop: 12 }}>Leagues &amp; scoring rules</Link>
     </>
   );
 }

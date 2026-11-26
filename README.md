@@ -28,8 +28,19 @@ Tables are created automatically on first use. Neon's free tier sleeps when idle
 
 ## Notes
 
-- **Leagues**: each game belongs to a league. A device remembers the last league it used and defaults to it.
-  Leagues have their own scoring (point values, round minimums), editable under *Leagues*.
+- **Leagues**: each game belongs to a league. *New game* defaults to the first league alphabetically.
+  Leagues have their own scoring (point values, round minimums), editable under *Admin → Leagues*.
   A game keeps the rules it was started with.
+- **Teams**: name a team to remember it, then pick it when starting a game. Naming a new team on the
+  *New game* screen saves it; changing a saved team's players there only updates it if you tick the box.
+  Under *Admin → Teams* you can add, edit and delete them. Renaming also renames it on past games; changing
+  players or deleting leaves past games as they were.
+- **Stats**: filter by league and by team (the players who played together). *Admin* needs no sign-in.
+- **Filters**: League, Player and Team choices carry across pages until the app is closed. Starting a game
+  moves the League filter to that game's league.
 - **Saving**: every change auto-saves. With no signal, changes are kept on the phone and sync later.
 - **Backup**: *Games → Download backup (JSON)*.
+- **Daily backup**: a Vercel cron job (`vercel.json`, 10:00 UTC) calls `/api/backup`, which saves games,
+  leagues and teams to `backups/` in Blob storage. One-time setup in Vercel: connect a **private** Blob
+  store to the project (Storage tab), add a `CRON_SECRET` environment variable (a long random string)
+  for Production, then redeploy. Download backups from the store's page. Old ones are never deleted.

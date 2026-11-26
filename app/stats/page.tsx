@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { fetchGames } from "@/lib/client";
-import { Game, fmt, formatDate } from "@/lib/game";
+import { fetchGames, fetchTeams } from "@/lib/client";
+import { Game, SavedTeam, fmt, formatDate } from "@/lib/game";
 import { PlayerStats, RecordEntry, computeStats, winPct } from "@/lib/stats";
-import LeagueFilter, { useLeagueFilter } from "../LeagueFilter";
+import LeagueFilter, { TeamFilter, savedNameOf, teamChoices, useLeagueFilter, useStickyFilter } from "../LeagueFilter";
 
 type SortKey = "name" | "games" | "wins" | "losses" | "pct" | "avg";
 
@@ -16,7 +16,11 @@ export default function StatsPage() {
   const [sort, setSort] = useState<SortKey>("pct");
   const lf = useLeagueFilter(games);
 
+  const [saved, setSaved] = useState<SavedTeam[]>([]);
+  const savedName = (partnership: string) => savedNameOf(saved, partnership);
+
   useEffect(() => {
+    fetchTeams().then(setSaved).catch(() => {});
     fetchGames()
       .then(setGames)
       .catch((e) => {
@@ -25,11 +29,16 @@ export default function StatsPage() {
       });
   }, []);
 
-  const stats = useMemo(() => computeStats(lf.filtered ?? []), [lf.filtered]);
-  const [lineTeam, setLineTeam] = useState("");
-  const selTeam = stats.partnerships.find((t) => t.name === lineTeam);
-  const lineCounts = selTeam ? selTeam.lines : stats.lineTotals;
-  const lineGames = selTeam ? selTeam.games : stats.partnerships.reduce((s, t) => s + t.games, 0) || 1;
+  const [chosenTeam, setTeam] = useStickyFilter("team");
+  const overall = useMemo(() => computeStats(lf.filtered ?? []), [lf.filtered]);
+  const choices = teamChoices(overall.partnerships.map((t) => t.name), saved);
+  // "" = all teams, including when the remembered team has no finished games in this league.
+  const selTeam = chosenTeam && choices.includes(chosenTeam) ? chosenTeam : "";
+  const stats = useMemo(
+    () => (selTeam ? computeStats(lf.filtered ?? [], selTeam) : overall),
+    [lf.filtered, overall, selTeam],
+  );
+  const lineGames = stats.partnerships.reduce((s, t) => s + t.games, 0) || 1;
 
   const val = (p: PlayerStats, k: SortKey): number | string =>
     k === "name" ? p.name : k === "pct" ? winPct(p) : k === "avg" ? p.points / p.games : p[k];
@@ -64,6 +73,12 @@ export default function StatsPage() {
       {error && <div className="banner err">{error}</div>}
       {games === null && <p className="muted">Loading…</p>}
       <LeagueFilter {...lf} />
+      <TeamFilter
+        team={selTeam}
+        setTeam={setTeam}
+        partnerships={choices}
+        saved={saved}
+      />
 
       {games && stats.games === 0 && <p className="muted">Stats appear after the first finished game.</p>}
 
@@ -119,7 +134,10 @@ export default function StatsPage() {
                   .sort((a, b) => winPct(b) - winPct(a) || b.games - a.games)
                   .map((t) => (
                     <tr key={t.name}>
-                      <td className="name">{t.name}</td>
+                      <td className="name">
+                        {savedName(t.name) || t.name}
+                        {savedName(t.name) && <div className="small muted">{t.name}</div>}
+                      </td>
                       <td>{t.games}</td>
                       <td>{t.wins}</td>
                       <td>{pct(winPct(t))}</td>
@@ -144,17 +162,6 @@ export default function StatsPage() {
           </div>
 
           <h2>Scoring lines</h2>
-          <div style={{ marginBottom: 10 }}>
-            <label className="field" htmlFor="line-team">Team</label>
-            <select id="line-team" value={selTeam?.name ?? ""} onChange={(e) => setLineTeam(e.target.value)}>
-              <option value="">All teams</option>
-              {[...stats.partnerships]
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((t) => (
-                  <option key={t.name} value={t.name}>{t.name}</option>
-                ))}
-            </select>
-          </div>
           <div className="table-wrap">
             <table>
               <thead>
@@ -168,8 +175,8 @@ export default function StatsPage() {
                 {stats.lineDefs.map((l) => (
                   <tr key={l.key}>
                     <td>{l.label}</td>
-                    <td>{lineCounts[l.key] ?? 0}</td>
-                    <td>{((lineCounts[l.key] ?? 0) / lineGames).toFixed(1)}</td>
+                    <td>{stats.lineTotals[l.key] ?? 0}</td>
+                    <td>{((stats.lineTotals[l.key] ?? 0) / lineGames).toFixed(1)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -180,8 +187,6 @@ export default function StatsPage() {
           </p>
         </>
       )}
-
-      <Link href="/leagues" className="btn block" style={{ marginTop: 20 }}>Leagues &amp; scoring rules</Link>
     </>
   );
 }

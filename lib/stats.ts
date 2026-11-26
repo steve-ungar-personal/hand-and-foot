@@ -1,4 +1,4 @@
-import { DEFAULT_RULES, Game, LineDef, leaders, roundTotal, rulesOf, teamLabel, totals } from "./game";
+import { DEFAULT_RULES, Game, LineDef, Team, leaders, roundTotal, rulesOf, teamLabel, totals } from "./game";
 
 export type Result = "win" | "loss" | "tie";
 
@@ -71,8 +71,13 @@ export function teamResult(g: Game, teamIdx: number): Result {
   return lead.length > 1 ? "tie" : "win";
 }
 
-export function computeStats(all: Game[]): Stats {
-  const games = all.filter((g) => g.status === "complete");
+/** Identifies a partnership by who is on it. */
+export const partnershipKey = (t: Team) => [...t.players].sort((a, b) => a.localeCompare(b)).join(" & ");
+
+/** With `only`, counts just that partnership: its games, players, records and scoring lines. */
+export function computeStats(all: Game[], only?: string): Stats {
+  const included = (t: Team) => !only || partnershipKey(t) === only;
+  const games = all.filter((g) => g.status === "complete" && g.teams.some(included));
   const players = new Map<string, PlayerStats>();
   const teams = new Map<string, TeamStats>();
   const records: Stats["records"] = {};
@@ -90,6 +95,7 @@ export function computeStats(all: Game[]): Stats {
     const margin = sorted[0] - sorted[1];
 
     g.teams.forEach((team, ti) => {
+      if (!included(team)) return;
       const res = teamResult(g, ti);
       const score = tot[ti];
       const opp = Math.max(...tot.filter((_, i) => i !== ti));
@@ -116,7 +122,7 @@ export function computeStats(all: Game[]): Stats {
       records.highGame = better(records.highGame, entry, true);
       records.lowGame = better(records.lowGame, entry, false);
 
-      const key = [...team.players].sort((a, b) => a.localeCompare(b)).join(" & ");
+      const key = partnershipKey(team);
       const ts = teams.get(key) ?? { name: key, points: 0, lines: emptyLines(), ...rec() };
       for (const [k, n] of Object.entries(lines)) add(ts.lines, k, n);
       tally(ts, res);
@@ -157,8 +163,8 @@ export function computeStats(all: Game[]): Stats {
       }
     });
 
-    if (margin > 0) {
-      const w = g.teams[tot.indexOf(sorted[0])];
+    const w = g.teams[tot.indexOf(sorted[0])];
+    if (margin > 0 && included(w)) {
       const m = { value: margin, label: teamLabel(w), gameId: g.id, date: g.date };
       records.bigMargin = better(records.bigMargin, m, true);
       records.closest = better(records.closest, m, false);

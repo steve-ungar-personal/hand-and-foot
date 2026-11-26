@@ -1,7 +1,7 @@
 "use client";
 // Client-side data access. Every game is also cached on the device so scoring keeps
 // working with a bad connection; unsynced games are retried later.
-import { Game, League, leagueOf, newLeague } from "./game";
+import { Game, League, SavedTeam, leagueOf, newLeague } from "./game";
 
 const KEY = (id: string) => `hf:game:${id}`;
 const PENDING = "hf:pending";
@@ -29,6 +29,24 @@ function lsDel(k: string) {
 const LAST_LEAGUE = "hf:lastLeague";
 export const getLastLeague = () => lsGet<string>(LAST_LEAGUE);
 export const setLastLeague = (league: string) => lsSet(LAST_LEAGUE, league);
+
+// League, player and team filters, shared by every page until the app is closed.
+export type FilterName = "league" | "player" | "team";
+const FILTER = (name: FilterName) => `hf:filter:${name}`;
+
+/** undefined = not chosen yet; "" = chosen "all". */
+export function getFilter(name: FilterName): string | undefined {
+  try {
+    return sessionStorage.getItem(FILTER(name)) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+export function setFilter(name: FilterName, value: string) {
+  try {
+    sessionStorage.setItem(FILTER(name), value);
+  } catch {}
+}
 
 const pending = () => new Set(lsGet<string[]>(PENDING) ?? []);
 const setPending = (s: Set<string>) => lsSet(PENDING, [...s]);
@@ -158,6 +176,7 @@ export async function renameLeague(from: string, to: string): Promise<{ name: st
   if (!r.ok) throw new Error(await errorOf(r));
   const res = await r.json();
   if (getLastLeague() === from) setLastLeague(res.name);
+  if (getFilter("league") === from) setFilter("league", res.name);
   return res;
 }
 
@@ -166,4 +185,33 @@ export async function deleteLeague(name: string): Promise<number> {
   if (!r.ok) throw new Error(await errorOf(r));
   if (getLastLeague() === name) lsDel(LAST_LEAGUE);
   return (await r.json()).games;
+}
+
+export async function fetchTeams(): Promise<SavedTeam[]> {
+  const r = await fetch("/api/teams", { cache: "no-store" });
+  if (!r.ok) throw new Error(await errorOf(r));
+  return r.json();
+}
+
+type TeamInput = { name: string; players: string[] };
+
+async function sendTeam(url: string, method: "POST" | "PATCH", { name, players }: TeamInput) {
+  const r = await fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, players }),
+  });
+  if (!r.ok) throw new Error(await errorOf(r));
+  return (await r.json()) as SavedTeam;
+}
+
+/** Saves a new team. Fails if the name is already taken, so it never overwrites one. */
+export const createTeam = (team: TeamInput) => sendTeam("/api/teams", "POST", team);
+
+export const updateTeam = (from: string, team: TeamInput) =>
+  sendTeam(`/api/teams/${encodeURIComponent(from)}`, "PATCH", team);
+
+export async function deleteTeam(name: string) {
+  const r = await fetch(`/api/teams/${encodeURIComponent(name)}`, { method: "DELETE" });
+  if (!r.ok) throw new Error(await errorOf(r));
 }

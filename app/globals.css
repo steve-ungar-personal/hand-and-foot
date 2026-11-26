@@ -303,3 +303,6 @@ input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 .mcell.big .fit { font-size: min(1em, 26cqi); white-space: nowrap; }
 .entry.many6 .mcell { container-type: inline-size; }
 .entry.many6 .mcell .cc input { font-size: min(0.85rem, 27cqi); }
+
+.check { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; cursor: pointer; }
+.check input { width: 20px; height: 20px; flex: none; margin: 0; accent-color: var(--accent); }

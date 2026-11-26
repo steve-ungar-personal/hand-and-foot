@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { deleteLeague, fetchGames, fetchLeagues, renameLeague, saveLeague } from "@/lib/client";
 import { DEFAULT_RULES, Game, autoOf, League, Rules, cleanName, leagueOf, newLeague } from "@/lib/game";
@@ -85,6 +86,7 @@ export default function LeaguesPage() {
 
   return (
     <>
+      <Link href="/admin" className="small">← Admin</Link>
       <h1>Leagues</h1>
       <p className="small muted">
         Each league has its own scoring. Rule changes apply to games started afterward; games already played keep
