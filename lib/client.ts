@@ -25,7 +25,7 @@ function lsDel(k: string) {
   } catch {}
 }
 
-// The league this device used last. There are no logins, so "the user" is the device.
+// The league this device used last. Everyone shares one password, so "the user" is the device.
 const LAST_LEAGUE = "hf:lastLeague";
 export const getLastLeague = () => lsGet<string>(LAST_LEAGUE);
 export const setLastLeague = (league: string) => lsSet(LAST_LEAGUE, league);
@@ -51,6 +51,14 @@ export function setFilter(name: FilterName, value: string) {
 const pending = () => new Set(lsGet<string[]>(PENDING) ?? []);
 const setPending = (s: Set<string>) => lsSet(PENDING, [...s]);
 
+/** fetch that goes to the sign-in page if the sign-in is missing or no longer valid. */
+async function api(url: string, init?: RequestInit) {
+  const r = await fetch(url, init);
+  if (r.status === 401 && location.pathname !== "/login")
+    location.assign(`/login?next=${encodeURIComponent(location.pathname + location.search)}`);
+  return r;
+}
+
 async function errorOf(r: Response) {
   try {
     return (await r.json()).error || r.statusText;
@@ -60,7 +68,7 @@ async function errorOf(r: Response) {
 }
 
 async function put(g: Game) {
-  const r = await fetch(`/api/games/${g.id}`, {
+  const r = await api(`/api/games/${g.id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(g),
@@ -106,7 +114,7 @@ export async function syncPending() {
 /** All games from the server, with any unsynced local edits layered on top. */
 export async function fetchGames(): Promise<Game[]> {
   await syncPending();
-  const r = await fetch("/api/games", { cache: "no-store" });
+  const r = await api("/api/games", { cache: "no-store" });
   if (!r.ok) throw new Error(await errorOf(r));
   const games = (await r.json()) as Game[];
   const unsynced = [...pending()].map((id) => lsGet<Game>(KEY(id))).filter(Boolean) as Game[];
@@ -121,7 +129,7 @@ export async function fetchGames(): Promise<Game[]> {
 export async function loadGame(id: string): Promise<{ game: Game | null; offline: boolean }> {
   const local = lsGet<Game>(KEY(id));
   try {
-    const r = await fetch(`/api/games/${id}`, { cache: "no-store" });
+    const r = await api(`/api/games/${id}`, { cache: "no-store" });
     if (r.status === 404) return { game: local, offline: false };
     if (!r.ok) throw new Error(await errorOf(r));
     const server = (await r.json()) as Game;
@@ -137,7 +145,7 @@ export async function loadGame(id: string): Promise<{ game: Game | null; offline
 export async function fetchLeagues(games: Game[] = []): Promise<League[]> {
   let saved: League[] = [];
   try {
-    const r = await fetch("/api/leagues", { cache: "no-store" });
+    const r = await api("/api/leagues", { cache: "no-store" });
     if (r.ok) saved = await r.json();
   } catch {}
   const byName = new Map(saved.map((l) => [l.name, l]));
@@ -149,7 +157,7 @@ export async function fetchLeagues(games: Game[] = []): Promise<League[]> {
 }
 
 export async function saveLeague(l: League) {
-  const r = await fetch("/api/leagues", {
+  const r = await api("/api/leagues", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...l, updatedAt: new Date().toISOString() }),
@@ -159,7 +167,7 @@ export async function saveLeague(l: League) {
 }
 
 export async function deleteGame(id: string) {
-  const r = await fetch(`/api/games/${id}`, { method: "DELETE" });
+  const r = await api(`/api/games/${id}`, { method: "DELETE" });
   if (!r.ok) throw new Error(await errorOf(r));
   lsDel(KEY(id));
   const p = pending();
@@ -168,7 +176,7 @@ export async function deleteGame(id: string) {
 }
 
 export async function renameLeague(from: string, to: string): Promise<{ name: string; games: number }> {
-  const r = await fetch(`/api/leagues/${encodeURIComponent(from)}`, {
+  const r = await api(`/api/leagues/${encodeURIComponent(from)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: to }),
@@ -181,14 +189,14 @@ export async function renameLeague(from: string, to: string): Promise<{ name: st
 }
 
 export async function deleteLeague(name: string): Promise<number> {
-  const r = await fetch(`/api/leagues/${encodeURIComponent(name)}`, { method: "DELETE" });
+  const r = await api(`/api/leagues/${encodeURIComponent(name)}`, { method: "DELETE" });
   if (!r.ok) throw new Error(await errorOf(r));
   if (getLastLeague() === name) lsDel(LAST_LEAGUE);
   return (await r.json()).games;
 }
 
 export async function fetchTeams(): Promise<SavedTeam[]> {
-  const r = await fetch("/api/teams", { cache: "no-store" });
+  const r = await api("/api/teams", { cache: "no-store" });
   if (!r.ok) throw new Error(await errorOf(r));
   return r.json();
 }
@@ -196,7 +204,7 @@ export async function fetchTeams(): Promise<SavedTeam[]> {
 type TeamInput = { name: string; players: string[] };
 
 async function sendTeam(url: string, method: "POST" | "PATCH", { name, players }: TeamInput) {
-  const r = await fetch(url, {
+  const r = await api(url, {
     method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, players }),
@@ -212,6 +220,6 @@ export const updateTeam = (from: string, team: TeamInput) =>
   sendTeam(`/api/teams/${encodeURIComponent(from)}`, "PATCH", team);
 
 export async function deleteTeam(name: string) {
-  const r = await fetch(`/api/teams/${encodeURIComponent(name)}`, { method: "DELETE" });
+  const r = await api(`/api/teams/${encodeURIComponent(name)}`, { method: "DELETE" });
   if (!r.ok) throw new Error(await errorOf(r));
 }

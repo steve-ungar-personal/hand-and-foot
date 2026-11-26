@@ -26,6 +26,20 @@ One-time setup:
 
 Tables are created automatically on first use. Neon's free tier sleeps when idle and wakes on the next request.
 
+## Password
+
+The whole app, including its data routes, asks for one shared password. In Vercel, add two
+environment variables for Production, then redeploy. **Without both, the live site stays locked.**
+
+- `APP_PASSWORD`: what people type. Use a few random words; don't put it in the code.
+- `SESSION_SECRET`: a different long random string (32+ characters) that signs sign-in cookies.
+
+A device stays signed in for 400 days from its last use (the browser maximum), so regular players
+aren't asked again unless they clear site data. Changing either variable and redeploying signs
+everyone out. Scores not yet synced stay on the phone and are sent after signing in again.
+
+Local dev needs no password. To try the sign-in locally, set both variables in `.env.local`.
+
 ## Notes
 
 - **Leagues**: each game belongs to a league. *New game* defaults to the first league alphabetically.
@@ -35,7 +49,7 @@ Tables are created automatically on first use. Neon's free tier sleeps when idle
   *New game* screen saves it; changing a saved team's players there only updates it if you tick the box.
   Under *Admin → Teams* you can add, edit and delete them. Renaming also renames it on past games; changing
   players or deleting leaves past games as they were.
-- **Stats**: filter by league and by team (the players who played together). *Admin* needs no sign-in.
+- **Stats**: filter by league and by team (the players who played together). 
 - **Filters**: League, Player and Team choices carry across pages until the app is closed. Starting a game
   moves the League filter to that game's league.
 - **Saving**: every change auto-saves. With no signal, changes are kept on the phone and sync later.

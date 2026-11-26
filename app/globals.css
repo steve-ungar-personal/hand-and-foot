@@ -91,7 +91,7 @@ h2 { font-size: 1.1rem; margin: 1.5rem 0 0.6rem; }
 .banner.err { background: color-mix(in srgb, var(--neg) 14%, var(--surface)); color: var(--neg); }
 .banner.win { background: color-mix(in srgb, var(--gold) 18%, var(--surface)); font-weight: 600; }
 
-input[type="text"], input[type="date"], select {
+input[type="text"], input[type="password"], input[type="date"], select {
   width: 100%; min-height: 46px; padding: 8px 12px;
   border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
 }
